@@ -1,0 +1,480 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="Infografía interactiva sobre los sesgos de Face2Gene en poblaciones subrepresentadas y su uso responsable en la consulta.">
+<title>Rostros que el algoritmo no ve</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: una sola columna de lectura (ficha clínica) con bandas de sección; cada sección es un módulo interactivo. */
+:root {
+  --paper: #EEF2F5;      /* fondo: papel de historia clínica, gris azulado */
+  --sheet: #FFFFFF;      /* superficie de módulos */
+  --ink: #16213A;        /* tinta principal, índigo profundo */
+  --muted: #55627A;      /* texto secundario */
+  --line: #CCD5E0;       /* reglas y bordes */
+  --accent: #2F4BD8;     /* azul de laboratorio: interacción */
+  --signal: #C2410C;     /* señal de sesgo: brecha, alerta */
+  --signal-soft: #FCE7DC;
+  --ok: #0F766E;
+  --ok-soft: #D7F0EC;
+  --accent-soft: #E1E7FB;
+  --display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --body: "Atkinson Hyperlegible", "Segoe UI", system-ui, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #0E1424; --sheet: #161E33; --ink: #E6EAF4; --muted: #9AA6BF; --line: #2A3552;
+    --accent: #8EA2FF; --signal: #FB8A55; --signal-soft: #3A2218; --ok: #4FD1C1; --ok-soft: #12302E; --accent-soft: #1F2A4D;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #0E1424; --sheet: #161E33; --ink: #E6EAF4; --muted: #9AA6BF; --line: #2A3552;
+  --accent: #8EA2FF; --signal: #FB8A55; --signal-soft: #3A2218; --ok: #4FD1C1; --ok-soft: #12302E; --accent-soft: #1F2A4D;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body {
+  background: var(--paper); color: var(--ink);
+  font-family: var(--body); font-size: 17px; line-height: 1.6;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 0 48px;
+}
+.wrap { max-width: 920px; margin: 0 auto; display: grid; gap: 28px; }
+h1, h2, h3 { font-family: var(--display); text-wrap: balance; margin: 0; line-height: 1.12; }
+h1 { font-size: clamp(2.1rem, 5.4vw, 3.6rem); font-weight: 800; letter-spacing: -0.02em; }
+h2 { font-size: clamp(1.5rem, 3.2vw, 2.1rem); font-weight: 700; letter-spacing: -0.01em; }
+h3 { font-size: 1.15rem; font-weight: 700; }
+p { margin: 0; max-width: 65ch; }
+.eyebrow { font-family: var(--mono); font-size: 0.75rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
+.mono { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+.muted { color: var(--muted); }
+section.mod { background: var(--sheet); border: 1px solid var(--line); border-radius: 6px; padding: clamp(18px, 3.5vw, 32px); display: grid; gap: 18px; min-width: 0; }
+button { font: inherit; color: inherit; cursor: pointer; }
+:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+
+/* Encabezado */
+header.hero { padding-block: 40px 8px; display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 32px; align-items: center; }
+.hero .lede { font-size: 1.12rem; color: var(--muted); }
+.hero .who { font-size: 0.9rem; color: var(--muted); }
+.face-box { background: var(--sheet); border: 1px solid var(--line); border-radius: 6px; padding: 14px; display: grid; gap: 8px; }
+.face-box svg { width: 100%; height: auto; display: block; max-width: 100%; }
+.face-cap { font-family: var(--mono); font-size: 0.78rem; color: var(--muted); min-height: 2.6em; }
+.lm { fill: var(--accent); stroke: var(--sheet); stroke-width: 2; cursor: pointer; transition: r .15s; }
+.lm:hover, .lm.on { fill: var(--signal); }
+.facelines { fill: none; stroke: var(--line); stroke-width: 2; }
+.mesh { stroke: var(--accent); stroke-opacity: .25; stroke-width: 1.2; fill: none; }
+
+.figures { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.fig { border-top: 3px solid var(--ink); padding-top: 10px; display: grid; gap: 4px; }
+.fig .n { font-family: var(--display); font-weight: 800; font-size: clamp(1.8rem, 4vw, 2.6rem); font-variant-numeric: tabular-nums; line-height: 1; }
+.fig.alert { border-top-color: var(--signal); }
+.fig.alert .n { color: var(--signal); }
+.fig p { font-size: 0.9rem; color: var(--muted); }
+
+/* Pasos */
+.steps { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+.step { text-align: left; background: var(--paper); border: 1px solid var(--line); border-radius: 6px; padding: 12px; display: grid; gap: 6px; }
+.step .k { font-family: var(--mono); font-size: 0.75rem; color: var(--accent); }
+.step[aria-selected="true"] { background: var(--accent-soft); border-color: var(--accent); }
+.step-detail { border-left: 3px solid var(--accent); padding-left: 14px; min-height: 5.5em; }
+
+/* Barra de composición */
+.comp { display: flex; height: 54px; border-radius: 4px; overflow: hidden; border: 1px solid var(--line); }
+.seg { display: flex; align-items: center; padding-left: 10px; font-family: var(--mono); font-weight: 600; font-size: 0.9rem; border: 0; text-align: left; }
+.seg.a { background: var(--ink); color: var(--sheet); }
+.seg.b { background: var(--signal); color: var(--sheet); }
+.seg.c { background: repeating-linear-gradient(135deg, var(--paper) 0 8px, var(--line) 8px 10px); color: var(--ink); }
+.seg[aria-pressed="true"] { box-shadow: inset 0 0 0 3px var(--accent); }
+.comp-note { min-height: 3.2em; }
+
+/* Gráfico */
+.tabs { display: flex; flex-wrap: wrap; gap: 8px; }
+.tab { border: 1px solid var(--line); background: var(--paper); border-radius: 999px; padding: 6px 14px; font-size: 0.95rem; }
+.tab[aria-selected="true"] { background: var(--ink); color: var(--sheet); border-color: var(--ink); }
+.chart { display: grid; gap: 14px; }
+.row { display: grid; grid-template-columns: minmax(0, 15em) minmax(0, 1fr); gap: 12px; align-items: center; }
+.row .lab { font-size: 0.95rem; }
+.track { position: relative; height: 30px; background: var(--paper); border-radius: 3px; border: 1px solid var(--line); }
+.bar { position: absolute; inset: 0 auto 0 0; border-radius: 2px; display: flex; align-items: center; justify-content: flex-end; padding-right: 8px; font-family: var(--mono); font-weight: 600; font-size: 0.85rem; color: var(--sheet); transition: width .6s ease; min-width: 3.4em; }
+.bar.ref { background: var(--ink); }
+.bar.low { background: var(--signal); }
+.bar.fix { background: var(--ok); }
+.axis { display: grid; grid-template-columns: minmax(0, 15em) minmax(0, 1fr); gap: 12px; }
+.ticks { display: flex; justify-content: space-between; font-family: var(--mono); font-size: 0.72rem; color: var(--muted); }
+.legend { display: flex; flex-wrap: wrap; gap: 14px; font-size: 0.85rem; color: var(--muted); }
+.legend i { display: inline-block; width: 12px; height: 12px; border-radius: 2px; vertical-align: -1px; margin-right: 6px; }
+.callout { background: var(--signal-soft); border-radius: 4px; padding: 12px 14px; }
+
+/* Bucle */
+.loop { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 20px; align-items: center; }
+.loop svg { width: 100%; height: auto; max-width: 100%; }
+.node rect { fill: var(--paper); stroke: var(--line); stroke-width: 1.5; transition: fill .3s, stroke .3s; }
+.node text { fill: var(--ink); font-family: var(--body); font-size: 13px; }
+.node.on rect { fill: var(--signal-soft); stroke: var(--signal); }
+.arrow { stroke: var(--muted); stroke-width: 2; fill: none; }
+.arrowhead { fill: var(--muted); }
+.loop-ctrl { display: grid; gap: 12px; }
+.btn { border: 1px solid var(--accent); background: var(--accent); color: var(--sheet); border-radius: 4px; padding: 8px 16px; font-weight: 700; justify-self: start; }
+.btn.ghost { background: transparent; color: var(--accent); }
+
+/* Dilemas */
+.cards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.card { text-align: left; border: 1px solid var(--line); background: var(--paper); border-radius: 6px; padding: 16px; display: grid; gap: 8px; align-content: start; }
+.card .tag { font-family: var(--mono); font-size: 0.72rem; letter-spacing: .08em; text-transform: uppercase; color: var(--accent); }
+.card .back { display: grid; gap: 6px; font-size: 0.95rem; }
+.card[aria-expanded="true"] { background: var(--sheet); border-color: var(--accent); }
+.card .hint { font-size: 0.82rem; color: var(--accent); }
+
+/* Caso */
+.case { border: 1px dashed var(--line); border-radius: 6px; padding: 14px 16px; background: var(--paper); display: grid; gap: 6px; }
+.case dl { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 2px 14px; margin: 0; font-size: 0.95rem; }
+.case dt { font-family: var(--mono); font-size: 0.8rem; color: var(--muted); padding-top: 2px; }
+.case dd { margin: 0; }
+.opts { display: grid; gap: 8px; }
+.opt { text-align: left; border: 1px solid var(--line); background: var(--sheet); border-radius: 6px; padding: 10px 14px; }
+.opt.good { border-color: var(--ok); background: var(--ok-soft); }
+.opt.bad { border-color: var(--signal); background: var(--signal-soft); }
+.feedback { min-height: 3em; }
+
+/* Lista */
+.check { display: grid; gap: 8px; }
+.check label { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 10px; align-items: start; padding: 8px 0; border-bottom: 1px solid var(--line); }
+.check input { width: 20px; height: 20px; margin-top: 3px; accent-color: var(--ok); }
+.meter { height: 8px; background: var(--paper); border-radius: 99px; overflow: hidden; border: 1px solid var(--line); }
+.meter span { display: block; height: 100%; background: var(--ok); width: 0; transition: width .3s; }
+
+footer { font-size: 0.85rem; color: var(--muted); display: grid; gap: 8px; }
+footer ol { margin: 0; padding-left: 1.2em; display: grid; gap: 4px; }
+footer a { color: var(--accent); }
+
+@media (max-width: 720px) {
+  header.hero { grid-template-columns: minmax(0, 1fr); padding-block: 24px 0; }
+  .steps { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .cards { grid-template-columns: minmax(0, 1fr); }
+  .loop { grid-template-columns: minmax(0, 1fr); }
+  .row, .axis { grid-template-columns: minmax(0, 1fr); gap: 4px; }
+  .axis > span { display: none; }
+}
+@media (max-width: 460px) {
+  .figures { grid-template-columns: minmax(0, 1fr); }
+  .seg { font-size: 0.75rem; padding-left: 6px; }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header class="hero">
+    <div style="display:grid; gap:16px; min-width:0">
+      <span class="eyebrow">Sesgo algorítmico en genética clínica</span>
+      <h1>Rostros que el algoritmo no ve</h1>
+      <p class="lede">Face2Gene sugiere síndromes genéticos a partir de una foto del rostro de un niño. Funciona muy bien con los rostros con los que aprendió. Esta infografía muestra qué pasa con los demás, y qué puede hacer usted en la consulta.</p>
+      <p class="who">Para médicos generales y pediatras en Colombia que usan o podrían usar herramientas de fenotipado facial.</p>
+    </div>
+    <figure class="face-box" style="margin:0">
+      <svg viewBox="0 0 240 260" role="img" aria-label="Esquema de un rostro con puntos anatómicos de referencia">
+        <ellipse class="facelines" cx="120" cy="130" rx="86" ry="112"/>
+        <polyline class="mesh" points="62,104 92,100 120,112 148,100 178,104"/>
+        <polyline class="mesh" points="74,120 120,162 166,120"/>
+        <polyline class="mesh" points="92,186 120,170 148,186 120,198 92,186"/>
+        <polyline class="mesh" points="40,128 74,120 92,186 120,232 148,186 166,120 200,128"/>
+        <polyline class="mesh" points="120,40 120,112 120,170"/>
+        <g id="landmarks"></g>
+      </svg>
+      <figcaption class="face-cap" id="facecap">Toque un punto: son algunos de los 18 puntos de referencia usados en el estudio colombiano de morfometría facial.</figcaption>
+    </figure>
+  </header>
+
+  <div class="figures" aria-label="Cifras clave">
+    <div class="fig"><span class="n">90,6 %</span><p>de aciertos entre las 10 primeras sugerencias en el estudio original.</p></div>
+    <div class="fig"><span class="n">43 %</span><p>de los pacientes de entrenamiento eran caucásicos; solo el 16 % de otros orígenes.</p></div>
+    <div class="fig alert"><span class="n">66,7 %</span><p>de precisión para síndrome de Noonan en niños colombianos, frente a 100 % en europeos.</p></div>
+  </div>
+
+  <section class="mod" id="como">
+    <span class="eyebrow">1 · Cómo decide</span>
+    <h2>De la foto a la lista de síndromes</h2>
+    <div class="steps" role="tablist" aria-label="Pasos del algoritmo">
+      <button class="step" role="tab" id="st0" aria-selected="true"><span class="k">Paso 1</span><strong>Foto frontal</strong></button>
+      <button class="step" role="tab" id="st1" aria-selected="false"><span class="k">Paso 2</span><strong>Detección y alineación</strong></button>
+      <button class="step" role="tab" id="st2" aria-selected="false"><span class="k">Paso 3</span><strong>Red neuronal profunda</strong></button>
+      <button class="step" role="tab" id="st3" aria-selected="false"><span class="k">Paso 4</span><strong>Lista ordenada</strong></button>
+    </div>
+    <div class="step-detail" id="stepdetail" role="tabpanel" aria-live="polite"></div>
+  </section>
+
+  <section class="mod" id="datos">
+    <span class="eyebrow">2 · Con qué aprendió</span>
+    <h2>¿De quién eran los rostros del entrenamiento?</h2>
+    <p class="muted">17.106 imágenes de 10.953 pacientes, con 216 síndromes. Toque cada segmento.</p>
+    <div class="comp" role="group" aria-label="Composición por origen del conjunto de entrenamiento">
+      <button class="seg a" style="width:43%" data-k="a" aria-pressed="false">43 %</button>
+      <button class="seg b" style="width:16%" data-k="b" aria-pressed="false">16 %</button>
+      <button class="seg c" style="width:41%" data-k="c" aria-pressed="false">41 %</button>
+    </div>
+    <div class="legend"><span><i style="background:var(--ink)"></i>Caucásicos</span><span><i style="background:var(--signal)"></i>Otros orígenes</span><span><i style="background:var(--line)"></i>Origen no registrado</span></div>
+    <p class="comp-note" id="compnote" aria-live="polite">Un modelo aprende los rasgos de quienes ve con más frecuencia. Lo que no ve, lo reconoce peor.</p>
+  </section>
+
+  <section class="mod" id="falla">
+    <span class="eyebrow">3 · Dónde falla</span>
+    <h2>La misma enfermedad, distinta precisión</h2>
+    <div class="tabs" role="tablist" aria-label="Estudio">
+      <button class="tab" role="tab" id="tabCO" aria-selected="true">Colombia, 2023</button>
+      <button class="tab" role="tab" id="tabCD" aria-selected="false">R. D. del Congo, 2017</button>
+    </div>
+    <div class="chart" id="chart" aria-live="polite"></div>
+    <div class="axis"><span></span><div class="ticks"><span>0 %</span><span>25 %</span><span>50 %</span><span>75 %</span><span>100 %</span></div></div>
+    <div class="legend"><span><i style="background:var(--ink)"></i>Población de referencia</span><span><i style="background:var(--signal)"></i>Población subrepresentada</span><span><i style="background:var(--ok)"></i>Tras reentrenar con fotos locales</span></div>
+    <p class="callout" id="chartnote"></p>
+  </section>
+
+  <section class="mod" id="bucle">
+    <span class="eyebrow">4 · Por qué no se corrige sola</span>
+    <h2>El bucle que amplía la brecha</h2>
+    <div class="loop">
+      <svg viewBox="0 0 360 300" role="img" aria-label="Ciclo de retroalimentación del sesgo">
+        <defs><marker id="ah" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="arrowhead" d="M0,0 L10,5 L0,10 z"/></marker></defs>
+        <path class="arrow" d="M240,58 C300,70 320,110 318,128" marker-end="url(#ah)"/>
+        <path class="arrow" d="M300,190 C292,232 262,250 240,252" marker-end="url(#ah)"/>
+        <path class="arrow" d="M118,252 C80,250 48,226 44,192" marker-end="url(#ah)"/>
+        <path class="arrow" d="M48,128 C52,92 82,64 118,58" marker-end="url(#ah)"/>
+        <g class="node" id="n0"><rect x="112" y="30" width="136" height="56" rx="6"/><text x="180" y="54" text-anchor="middle">Más fotos de</text><text x="180" y="72" text-anchor="middle">países con genetistas</text></g>
+        <g class="node" id="n1"><rect x="236" y="132" width="120" height="56" rx="6"/><text x="296" y="156" text-anchor="middle">Mejor precisión</text><text x="296" y="174" text-anchor="middle">en esa población</text></g>
+        <g class="node" id="n2"><rect x="112" y="226" width="136" height="56" rx="6"/><text x="180" y="250" text-anchor="middle">Más confianza</text><text x="180" y="268" text-anchor="middle">y más usuarios allí</text></g>
+        <g class="node" id="n3"><rect x="4" y="132" width="120" height="56" rx="6"/><text x="64" y="156" text-anchor="middle">Menos fotos de</text><text x="64" y="174" text-anchor="middle">otras poblaciones</text></g>
+      </svg>
+      <div class="loop-ctrl">
+        <p id="loopText" aria-live="polite">El modelo aprende de las fotos que suben sus usuarios. Avance paso a paso para ver cómo se refuerza la desigualdad.</p>
+        <div style="display:flex; gap:8px; flex-wrap:wrap">
+          <button class="btn" id="loopNext">Siguiente paso</button>
+          <button class="btn ghost" id="loopReset">Reiniciar</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="mod" id="dilemas">
+    <span class="eyebrow">5 · Dilemas éticos</span>
+    <h2>Cuatro preguntas antes de tomar la foto</h2>
+    <div class="cards" id="cards"></div>
+  </section>
+
+  <section class="mod" id="caso">
+    <span class="eyebrow">6 · Caso para la consulta</span>
+    <h2>¿Qué haría usted?</h2>
+    <div class="case">
+      <span class="eyebrow">Caso ilustrativo, no real</span>
+      <dl>
+        <dt>Paciente</dt><dd>Niña de 3 años, Cali. Ascendencia afrodescendiente e indígena.</dd>
+        <dt>Motivo</dt><dd>Talla baja, estenosis pulmonar leve, hipertelorismo.</dd>
+        <dt>Face2Gene</dt><dd>Noonan aparece en el puesto 4 de la lista, con similitud baja.</dd>
+      </dl>
+    </div>
+    <div class="opts" id="opts"></div>
+    <p class="feedback" id="feedback" aria-live="polite"></p>
+  </section>
+
+  <section class="mod" id="lista">
+    <span class="eyebrow">7 · Uso responsable</span>
+    <h2>Lista de verificación para la consulta</h2>
+    <div class="meter" aria-hidden="true"><span id="meter"></span></div>
+    <p class="muted" id="meterText">0 de 6 prácticas marcadas.</p>
+    <div class="check" id="check"></div>
+  </section>
+
+  <footer>
+    <p><strong>Fuentes.</strong> Elaboración de Martín Gracia Socha para la electiva Ética e Innovación en la Era Digital, Universidad Jorge Tadeo Lozano, 2026. Ilustración esquemática; no es una herramienta diagnóstica.</p>
+    <ol>
+      <li>Gurovich, Y. et al. (2019). Identifying facial phenotypes of genetic disorders using deep learning. <em>Nature Medicine, 25</em>(1), 60–64. <a href="https://doi.org/10.1038/s41591-018-0279-0">doi.org/10.1038/s41591-018-0279-0</a></li>
+      <li>Echeverry-Quiceno, L. M. et al. (2023). Population-specific facial traits and diagnosis accuracy of genetic and rare diseases in an admixed Colombian population. <em>Scientific Reports, 13</em>, 6869. <a href="https://doi.org/10.1038/s41598-023-33374-x">doi.org/10.1038/s41598-023-33374-x</a></li>
+      <li>Lumaka, A. et al. (2017). Facial dysmorphism is influenced by ethnic background of the patient and of the evaluator. <em>Clinical Genetics, 92</em>(2), 166–171. <a href="https://doi.org/10.1111/cge.12948">doi.org/10.1111/cge.12948</a></li>
+      <li>Jobin, A., Ienca, M. y Vayena, E. (2019). The global landscape of AI ethics guidelines. <em>Nature Machine Intelligence, 1</em>, 389–399. <a href="https://doi.org/10.1038/s42256-019-0088-2">doi.org/10.1038/s42256-019-0088-2</a></li>
+      <li>Ley Estatutaria 1581 de 2012, Colombia (datos sensibles y de menores, arts. 5 y 7).</li>
+    </ol>
+  </footer>
+</div>
+
+<script>
+(function () {
+  // Puntos de referencia del rostro esquemático
+  var LM = [
+    [120,40,"Vértex frontal"],[92,100,"Ceja derecha"],[148,100,"Ceja izquierda"],
+    [74,120,"Exocantion derecho: ángulo externo del ojo"],[104,120,"Endocantion derecho: ángulo interno del ojo"],
+    [136,120,"Endocantion izquierdo"],[166,120,"Exocantion izquierdo"],[120,112,"Nasion: raíz de la nariz"],
+    [120,162,"Subnasal: base de la nariz"],[92,186,"Queilion derecho: comisura labial"],[148,186,"Queilion izquierdo"],
+    [120,170,"Labrale superior"],[120,198,"Labrale inferior"],[120,232,"Gnation: punto del mentón"],
+    [40,128,"Tragion derecho"],[200,128,"Tragion izquierdo"],[62,104,"Frontotemporal derecho"],[178,104,"Frontotemporal izquierdo"]
+  ];
+  var g = document.getElementById("landmarks"), cap = document.getElementById("facecap"), NS = "http://www.w3.org/2000/svg";
+  LM.forEach(function (p) {
+    var c = document.createElementNS(NS, "circle");
+    c.setAttribute("cx", p[0]); c.setAttribute("cy", p[1]); c.setAttribute("r", 5.5);
+    c.setAttribute("class", "lm"); c.setAttribute("tabindex", "0"); c.setAttribute("role", "button"); c.setAttribute("aria-label", p[2]);
+    function show() {
+      g.querySelectorAll(".lm").forEach(function (o) { o.classList.remove("on"); });
+      c.classList.add("on");
+      cap.textContent = p[2] + ". La distancia entre puntos como este cambia según la ascendencia, y el modelo puede confundir variación poblacional con un rasgo sindrómico.";
+    }
+    c.addEventListener("click", show);
+    c.addEventListener("keydown", function (e) { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); show(); } });
+    g.appendChild(c);
+  });
+
+  // Pasos
+  var STEPS = [
+    "<strong>Foto frontal.</strong> El clínico toma o carga una fotografía del rostro del paciente, casi siempre un niño. Es un dato biométrico de un menor: no puede anonimizarse y en Colombia es un dato sensible.",
+    "<strong>Detección y alineación.</strong> El sistema ubica el rostro, lo recorta y lo normaliza. La red se preentrenó con cerca de 494.000 fotos de personas famosas tomadas de internet.",
+    "<strong>Red neuronal profunda (DeepGestalt).</strong> Compara patrones del rostro con los de 216 síndromes aprendidos de fotos que subieron otros usuarios con el diagnóstico que ellos asignaron. No explica en reglas por qué decide lo que decide.",
+    "<strong>Lista ordenada.</strong> Devuelve los síndromes más parecidos con un puntaje de similitud. Es una hipótesis para orientar el estudio genético, no un diagnóstico."
+  ];
+  var stepBtns = Array.prototype.slice.call(document.querySelectorAll(".step")), detail = document.getElementById("stepdetail");
+  function setStep(i) {
+    stepBtns.forEach(function (b, j) { b.setAttribute("aria-selected", j === i ? "true" : "false"); });
+    detail.innerHTML = "<p>" + STEPS[i] + "</p>";
+  }
+  stepBtns.forEach(function (b, i) { b.addEventListener("click", function () { setStep(i); }); });
+  setStep(0);
+
+  // Composición
+  var NOTES = {
+    a: "43 % caucásicos. Es el grupo que el modelo conoce mejor.",
+    b: "16 % de otros orígenes, que reúnen a la mayor parte de la población mundial: africanos, asiáticos, indígenas y mestizos.",
+    c: "41 % sin origen registrado. Sin ese dato nadie puede auditar si el modelo es justo con cada población."
+  };
+  var segs = Array.prototype.slice.call(document.querySelectorAll(".seg")), compnote = document.getElementById("compnote");
+  segs.forEach(function (s) {
+    s.addEventListener("click", function () {
+      segs.forEach(function (o) { o.setAttribute("aria-pressed", o === s ? "true" : "false"); });
+      compnote.textContent = NOTES[s.dataset.k];
+    });
+  });
+
+  // Gráfico
+  var DATA = {
+    CO: {
+      rows: [
+        ["Down · europeos", 100, "ref"], ["Down · colombianos", 100, "low"],
+        ["Noonan · europeos", 100, "ref"], ["Noonan · colombianos", 66.7, "low"],
+        ["Morquio · colombianos", 10, "low", "< 10 %"], ["Neurofibromatosis 1 · colombianos", 10, "low", "< 10 %"]
+      ],
+      note: "En 51 pacientes colombianos de ascendencia mixta, la herramienta acertó en Down pero bajó en Noonan y casi no reconoció Morquio ni neurofibromatosis tipo 1. Las personas con ascendencia mixta obtuvieron los puntajes de similitud más bajos en todos los síndromes. Las barras de Morquio y NF1 marcan el tope de 10 %."
+    },
+    CD: {
+      rows: [
+        ["Down · rostros caucásicos", 80, "ref", "≈ 80 %"], ["Down · rostros africanos", 36.8, "low"],
+        ["Down · africanos tras reentrenar", 94.7, "fix"]
+      ],
+      note: "La herramienta reconoció el síndrome de Down en el 36,8 % de los rostros africanos. Después de entrenarla con fotos locales llegó al 94,7 %. El sesgo se corrige con datos representativos."
+    }
+  };
+  var chart = document.getElementById("chart"), chartnote = document.getElementById("chartnote");
+  function fmt(v) { return (Math.round(v * 10) / 10).toString().replace(".", ",") + " %"; }
+  function draw(k) {
+    var d = DATA[k];
+    chart.innerHTML = d.rows.map(function (r) {
+      return '<div class="row"><span class="lab">' + r[0] + '</span><div class="track"><div class="bar ' + r[2] + '" style="width:0%" data-w="' + r[1] + '">' + (r[3] || fmt(r[1])) + '</div></div></div>';
+    }).join("");
+    chartnote.textContent = d.note;
+    requestAnimationFrame(function () { requestAnimationFrame(function () {
+      chart.querySelectorAll(".bar").forEach(function (b) { b.style.width = b.dataset.w + "%"; });
+    }); });
+  }
+  var tabCO = document.getElementById("tabCO"), tabCD = document.getElementById("tabCD");
+  function pick(k) { tabCO.setAttribute("aria-selected", k === "CO"); tabCD.setAttribute("aria-selected", k === "CD"); draw(k); }
+  tabCO.addEventListener("click", function () { pick("CO"); });
+  tabCD.addEventListener("click", function () { pick("CD"); });
+  // Estado inicial visible sin animación
+  chart.innerHTML = DATA.CO.rows.map(function (r) {
+    return '<div class="row"><span class="lab">' + r[0] + '</span><div class="track"><div class="bar ' + r[2] + '" style="width:' + r[1] + '%">' + (r[3] || fmt(r[1])) + '</div></div></div>';
+  }).join("");
+  chartnote.textContent = DATA.CO.note;
+
+  // Bucle
+  var LOOP = [
+    "Los países con más genetistas y conectividad suben más fotos a la plataforma.",
+    "El modelo se reentrena con esas fotos y mejora en esas poblaciones.",
+    "Los clínicos de esos países confían más en la herramienta y la usan más.",
+    "Las poblaciones africanas, indígenas y mestizas siguen subrepresentadas, y el modelo sigue fallando con ellas. El ciclo vuelve a empezar."
+  ];
+  var li = -1, lt = document.getElementById("loopText");
+  function loopShow() {
+    for (var i = 0; i < 4; i++) document.getElementById("n" + i).classList.toggle("on", i === li);
+    lt.textContent = li < 0 ? "El modelo aprende de las fotos que suben sus usuarios. Avance paso a paso para ver cómo se refuerza la desigualdad." : LOOP[li];
+  }
+  document.getElementById("loopNext").addEventListener("click", function () { li = (li + 1) % 4; loopShow(); });
+  document.getElementById("loopReset").addEventListener("click", function () { li = -1; loopShow(); });
+
+  // Dilemas
+  var CARDS = [
+    ["Privacidad", "¿Quién guarda la foto de este niño, y para qué más se usará?", "El rostro es un dato biométrico que no se puede anonimizar. Asociado a un diagnóstico genético, es doblemente sensible. La empresa también ofrece servicios de identificación de pacientes a laboratorios y farmacéuticas.", "Principio: privacidad"],
+    ["Consentimiento", "¿Los padres saben que la foto alimentará un modelo comercial?", "Un consentimiento válido explica el uso clínico y también el uso secundario de la imagen para entrenar el sistema.", "Principio: autonomía y transparencia"],
+    ["Responsabilidad", "Si la lista lleva a un diagnóstico equivocado, ¿quién responde?", "El médico que confió, la empresa que diseñó el modelo o la institución que lo adoptó. Sin reglas claras, la responsabilidad se diluye.", "Principio: rendición de cuentas"],
+    ["Justicia", "¿Recibe este paciente la misma calidad de sugerencia que un niño europeo?", "La evidencia indica que no. La herramienta funciona peor donde hay menos genetistas y más se necesita.", "Principio: justicia y no discriminación"]
+  ];
+  var cardsEl = document.getElementById("cards");
+  CARDS.forEach(function (c, i) {
+    var b = document.createElement("button");
+    b.className = "card"; b.id = "card" + i; b.setAttribute("aria-expanded", "false");
+    b.innerHTML = '<span class="tag">' + c[0] + '</span><h3>' + c[1] + '</h3><span class="hint">Ver respuesta</span><div class="back" hidden><p>' + c[2] + '</p><span class="eyebrow">' + c[3] + '</span></div>';
+    b.addEventListener("click", function () {
+      var open = b.getAttribute("aria-expanded") === "true";
+      b.setAttribute("aria-expanded", open ? "false" : "true");
+      b.querySelector(".back").hidden = open;
+      b.querySelector(".hint").textContent = open ? "Ver respuesta" : "Ocultar";
+    });
+    cardsEl.appendChild(b);
+  });
+
+  // Caso
+  var OPTS = [
+    ["Descartar Noonan porque la similitud es baja.", false, "La similitud baja puede reflejar que el modelo conoce poco los rostros de esta población, no que el síndrome esté ausente. En Colombia la precisión para Noonan fue de 66,7 %."],
+    ["Pedir solo el panel genético del primer síndrome de la lista.", false, "Eso delega la decisión en el algoritmo. La lista es una hipótesis y el primer puesto puede estar sesgado."],
+    ["Mantener Noonan como hipótesis por la clínica, completar el examen y remitir a genética, sabiendo que la herramienta es menos precisa en esta población.", true, "Correcto. La estenosis pulmonar, la talla baja y el hipertelorismo sostienen la sospecha. La herramienta apoya, pero el juicio clínico decide."]
+  ];
+  var optsEl = document.getElementById("opts"), fb = document.getElementById("feedback");
+  OPTS.forEach(function (o, i) {
+    var b = document.createElement("button");
+    b.className = "opt"; b.id = "opt" + i; b.textContent = o[0];
+    b.addEventListener("click", function () {
+      optsEl.querySelectorAll(".opt").forEach(function (x) { x.classList.remove("good", "bad"); });
+      b.classList.add(o[1] ? "good" : "bad");
+      fb.textContent = o[2];
+    });
+    optsEl.appendChild(b);
+  });
+
+  // Lista de verificación
+  var CHECK = [
+    "Uso la lista como hipótesis, nunca como diagnóstico.",
+    "Tengo en cuenta que la precisión es menor en poblaciones mestizas, afrodescendientes e indígenas.",
+    "Explico a los padres el uso clínico y comercial de la foto y obtengo su consentimiento.",
+    "Comparo la sugerencia con el examen físico completo y la historia familiar.",
+    "Remito a genética cuando la sospecha clínica persiste, aunque el puntaje sea bajo.",
+    "Pido a mi institución validar la herramienta en nuestra población antes de adoptarla."
+  ];
+  var ck = document.getElementById("check"), meter = document.getElementById("meter"), mt = document.getElementById("meterText");
+  CHECK.forEach(function (t, i) {
+    var l = document.createElement("label");
+    l.innerHTML = '<input type="checkbox" id="chk' + i + '"><span>' + t + '</span>';
+    ck.appendChild(l);
+  });
+  ck.addEventListener("change", function () {
+    var n = ck.querySelectorAll("input:checked").length;
+    meter.style.width = (n / CHECK.length * 100) + "%";
+    mt.textContent = n + " de " + CHECK.length + " prácticas marcadas." + (n === CHECK.length ? " Su uso de la herramienta es responsable." : "");
+  });
+})();
+</script>
+
+</body>
+</html>
